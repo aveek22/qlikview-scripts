@@ -389,6 +389,7 @@ store Telecom_Fact into '..\QVDs\Telecom_Fact3.qvd';
 //
 //store Telecom_Fact into '..\QVDs\Telecom_Fact.qvd';
 ////drop table Telecom_Fact;
+////drop table Telecom_Fact;
 //
 ///$tab End
 Let vReloadEnd = now(1); //put this at the end of the script
