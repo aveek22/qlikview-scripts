@@ -1,0 +1,174 @@
+﻿///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;-$#,##0.00';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='YYYY-MM-DD';
+SET TimestampFormat='YYYY-MM-DD h:mm:ss[.fff] TT';
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+
+Let vReloadStart=now(1); //put this at the beginning of the script
+
+$(Include=..\..\..\scripts\edwconnection.txt);
+
+///$tab A
+AgentList:
+LOAD AgentKey,
+    EmplyeeID as EmployeeID,
+    AgentFirstName,
+    AgentLastName,
+    AgentFirstName & ' ' & AgentLastName as AgentFullName,
+    AgentTypeCode,
+    AgentFunctionCode,
+    LastDateChange;
+SQL SELECT *
+FROM "EDW_ClubAuto".dbo.DimAgent;
+
+store AgentList into '..\QVDs\AgentList.qvd';
+drop table AgentList;
+//*********************************
+///$tab B
+///$tab C
+Calendar:
+LOAD *,
+	dual(CalendarYear & '-' & EnglishMonthName_Short,CalPeriod) as CalYearMonth //create a Year-Month field that uses CalPeriod for numerical sorting
+;																//dual(text,numeric) function allows you to set how a field value is handled both as text and numeric
+LOAD *,															//primarily used to retain proper sorting value in charts
+	AutoNumber(EnglishMonthName_Short & CalendarYear,'CalPeriod') as CalPeriod //create a numerical value for each Month-Year combination
+;
+LOAD DateKey, 
+     FullDateAlternateKey, 
+     DayNumberOfWeek, 
+     DayNameOfWeek as DayNameOfWeek_Full,
+     weekday(FullDateAlternateKey) as DayNameOfWeek_Short, 
+     DayNumberOfMonth, 
+     DayNumberOfYear, 
+     WeekNumberOfYear, 
+     EnglishMonthName,
+     month(FullDateAlternateKey) as EnglishMonthName_Short, 
+     MonthNumberOfYear, 
+     CalendarQuarter, 
+     CalendarYear, 
+     FiscalYear, 
+     FiscalQuarter, 
+     MonthName, 
+     CalendarQuarterDesc, 
+     FiscalQuarterDesc, 
+     FirstDateOfMonth, 
+     LastDateOfMonth, 
+     Rolling12Month
+;
+SQL SELECT *
+FROM "EDW_ClubAuto".dbo.DimDate
+;
+store Calendar into '..\QVDs\Calendar.qvd';
+drop table Calendar;
+//*********************************
+CallStatus:
+SQL SELECT CallStatusKey,
+    CallStatusCode,
+    CallStatusDesc
+FROM "EDW_ClubAuto".dbo.DimCallStatus
+;
+store CallStatus into '..\QVDs\CallStatus.qvd';
+drop table CallStatus;
+//*********************************
+ClearStatus:
+LOAD ClearStatusKey as StatusKey,
+    ClearStatusCode,
+    ClearStatusDesc
+;
+SQL SELECT ClearStatusKey,
+    ClearStatusCode,
+    ClearStatusDesc
+FROM "EDW_ClubAuto".dbo.DimClearStatus
+;
+store ClearStatus into '..\QVDs\ClearStatus.qvd';
+drop table ClearStatus;
+//*********************************
+ClubInfo:
+SQL SELECT ClubKey as Clubkey,
+    ClubCode,
+    ClubName,
+    ClubCity,
+    ClubStateProvince 
+FROM "EDW_ClubAuto".dbo.DimClub
+;
+store ClubInfo into '..\QVDs\ClubInfo.qvd';
+drop table ClubInfo;
+//*********************************
+///$tab D
+
+///$tab E
+///$tab F
+
+///$tab G
+
+///$tab H
+///$tab I
+///$tab J
+///$tab K
+///$tab L
+///$tab M
+///$tab N
+///$tab O
+///$tab P
+ProvinceInfo:
+SQL SELECT StateProvinceKey,
+    Country,
+    StateProvince,
+    StateProvinceName
+FROM "EDW_ClubAuto".dbo.DimStateProvince
+;
+
+store ProvinceInfo into '..\QVDs\ProvinceInfo.qvd';
+drop table ProvinceInfo;
+//*********************************
+///$tab Q
+///$tab R
+///$tab S
+ServiceInfo:
+SQL SELECT ProblemKey,
+    ProblemCode,
+    ProblemDesc,
+    TowingFlag,
+    CallCategory,
+    ServiceCategory,
+    ServiceSubCategory,
+    DataSource
+FROM "EDW_ClubAuto".dbo.DimProblem
+;
+
+store ServiceInfo into '..\QVDs\ServiceInfo.qvd';
+drop table ServiceInfo;
+//*********************************
+ServiceReason:
+SQL SELECT ServiceReason,
+    ServiceReasonKey
+FROM "EDW_ClubAuto".dbo.DimServiceReason
+;
+
+store ServiceReason into '..\QVDs\ServiceReason.qvd';
+drop table ServiceReason;
+//*********************************
+SkillSet:
+SQL SELECT *
+FROM "EDW_ClubAuto".dbo.DimSkillSet;
+
+store SkillSet into '..\QVDs\SkillSet.qvd';
+drop table SkillSet;
+//*********************************
+///$tab T
+///$tab U
+///$tab V
+///$tab W
+
+///$tab X
+///$tab Y
+///$tab Z
+///$tab End
+Let vReloadEnd = now(1); //put this at the end of the script
+Let vReloadInterval = '$(vReloadEnd)' - '$(vReloadStart)';

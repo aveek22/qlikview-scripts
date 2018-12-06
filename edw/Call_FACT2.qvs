@@ -1,0 +1,401 @@
+﻿///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;-$#,##0.00';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='YYYY-MM-DD';
+SET TimestampFormat='YYYY-MM-DD h:mm:ss[.fff] TT';
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+
+Let vReloadStart=now(1); //put this at the beginning of the script
+
+$(Include=..\..\..\scripts\edwconnection.txt);
+
+///$tab Mapping
+CallStatusCodeM:
+Mapping 
+LOAD CallStatusKey,
+    	CallStatusCode
+FROM
+[..\QVDs\CallStatus.qvd]
+(qvd);
+//**********************************
+CallStatusDescM:
+Mapping 
+LOAD CallStatusKey, 
+     	CallStatusDesc
+FROM
+[..\QVDs\CallStatus.qvd]
+(qvd);
+//**********************************
+ServiceReasonM:
+Mapping 
+LOAD ServiceReasonKey, 
+     ServiceReason
+FROM
+[..\QVDs\ServiceReason.qvd]
+(qvd);
+//**********************************
+ClearStatusCodeM:
+Mapping 
+LOAD StatusKey, 
+     ClearStatusCode
+FROM
+[..\QVDs\ClearStatus.qvd]
+(qvd);
+//**********************************
+ClearStatusDescM:
+Mapping 
+LOAD StatusKey, 
+     ClearStatusDesc
+FROM
+[..\QVDs\ClearStatus.qvd]
+(qvd);
+//**********************************
+OLEDB CONNECT TO [Provider=SQLOLEDB.1;Integrated Security=SSPI;Persist Security Info=False;Initial Catalog=EDW_ClubAuto;Data Source=caa-edw\sql2012;Use Procedure for Prepare=1;Auto Translate=True;Packet Size=4096;Workstation ID=CLAUTO-21359-L;Use Encryption for Data=False;Tag with column collation when possible=False];
+
+AgentInfo:
+LOAD AgentKey,
+    EmplyeeID,
+    Site;
+SQL SELECT AgentKey,
+    EmplyeeID,
+	Site =
+case
+when DimAgent.EmplyeeID like 'AL___' then 'Alliance'
+when DimAgent.EmplyeeID like 'X%' then 'LiveX'
+else 'CARS'
+end
+FROM "EDW_ClubAuto".dbo.DimAgent;
+
+
+
+
+
+///$tab Main 2
+Call_Fact:
+LOAD CallID, 
+     CallServiceDate, 
+     CallServiceId, 
+     ClientProgramKey,
+     ClientKey,
+     ClientName, 
+     VehicleKey, 
+     ServicedVehicleKey, 
+     VehicleWarrantyKey, 
+     AgentKey,
+     DateReceivedKey, 
+     Clubkey, 
+     ProblemKey, 
+     StatusKey, 
+     applymap('ClearStatusCodeM',StatusKey,null()) as ClearStatusCode,
+     applymap('ClearStatusDescM',StatusKey,null()) as ClearStatusDesc, 
+     ReceiveLagSecs, 
+     ETA, 
+     ATA,
+     ATADiff, 
+     DaysSinceActivation, 
+     DaysSincelastRenewal, 
+     ReceivingTime, 
+     SpottedLagMins, 
+     TransmittedLagMins, 
+     AssignedLagMins, 
+     DispatchedLagMins, 
+     EnRouteLagMins, 
+     OnLoacationLagMins, 
+     TowedLagMins, 
+     CancelledLagMins, 
+     ClearedLagMins, 
+     NumberOfTows, 
+     TotalTowingDistanceKM, 
+     NumberOfServices, 
+     TotalCost, 
+     DateAdded, 
+     DateModified, 
+     LocationKey, 
+     CallStatusKey,
+     applymap('CallStatusCodeM',CallStatusKey,null()) as CallStatusCode,
+     applymap('CallStatusDescM',CallStatusKey,null()) as CallStatusDesc, 
+     MemberID, 
+     ServicedVehicleMake, 
+     ServicedVehicleModel, 
+     ServicedVehicleYear, 
+     ETAVarianceRangeKey, 
+     StateProvinceKey, 
+     Archived, 
+     TowingDestinationKey, 
+     TowingExtraInfoKey, 
+     Odometer, 
+     CallerKey, 
+     Cash, 
+     Usage, 
+     ServiceReasonKey,
+     applymap('ServiceReasonM',ServiceReasonKey,null()) as ServiceReason, 
+     PolicyKey, 
+     VehicleTypeKey, 
+     OdometerRangeKey,
+     month(date#(DateReceivedKey,'YYYYMMDD')) as Fmonth,
+	 Year(date#(DateReceivedKey,'YYYYMMDD')) as Fyear,
+     DateReceivedKey &'_'& ClientKey as FactCallKey
+;
+SQL SELECT * 
+FROM "EDW_ClubAuto".dbo.FactCall 
+	inner join DimClientProgram on "EDW_ClubAuto".dbo.FactCall.ClientProgramKey = "EDW_ClubAuto".dbo.DimClientProgram.ClientProgramKey 
+	inner join "EDW_ClubAuto".dbo.DimClient on "EDW_ClubAuto".dbo.DimClientProgram.ClientKey = "EDW_ClubAuto".dbo.DimClient.ClientKey 
+	where "EDW_ClubAuto".dbo.FactCall.CallServiceDate >= '2014-10-01' and "EDW_ClubAuto".dbo.FactCall.CallServiceDate <= '2015-08-25';
+
+left join(Call_Fact)
+LOAD StateProvinceKey,
+    Country,
+    StateProvince,
+    StateProvinceName
+FROM
+[..\QVDs\ProvinceInfo.qvd]
+(qvd);
+
+left join(Call_Fact)
+LOAD AgentKey,
+    EmplyeeID,
+    Site
+Resident AgentInfo;
+
+drop table AgentInfo;
+
+
+//store Call_Fact into '..\QVDs\Call_Fact2.qvd';
+//drop table Call_Fact;
+///$tab SFData
+////Sandbox:
+////CUSTOM CONNECT TO "Provider=SalesForceDLL.dll;T29;XUserId=aQOYdQRMFLZAURFMBbcGWXZFDLYcCTVOMDbYD;XPassword=abSIIWFGLLaaWQVNBLMQHcQNECVGTGNKLLRGURBKZaNeGEdJJCbOVTJMVTWcO;";
+////Production:
+//CUSTOM CONNECT TO "Provider=SalesForceDLL.dll;F29;XUserId=CYSdXQRMFLZAXRBNBTbIGANMMLdEWQVOUbbYGaRMOZYeWWBT;XPassword=FeaZZZBIMLZGHTBGSbYKWZMKXKdaWIBHWDVITadKQCOeWWFMHKNMWZdMRSZMWERB;";
+//
+//SFDispatches:
+//LOAD //date(CreatedDate,'YYYYMMDD') as DateReceivedKey,
+////	date(CreatedDate,'YYYY-MM-DD') as CallServiceDate,
+//	date(left(CreatedDate - 4/24,10), 'YYYYMMDD') as DateReceivedKey,
+//	date(left(CreatedDate - 4/24,10), 'YYYY-MM-DD') as CallServiceDate,
+//	round(time(OL_Status_Date_Time__c - DI_Status_Date_Time__c)*24*60) as 'ATA',
+//	round(time(XX_Status_Date_Time__c - DI_Status_Date_Time__c)*24*60) as 'CancelledLagMins',
+//*;
+//LOAD CaseNumber as CallServiceId,
+////    Clear_Code__c as ClearStatusDesc,
+//    Client_Code__c as ClientCode,
+//    Club_Code__c as Clubkey,
+//    CreatedDate,
+//    Current_Odometer__c as Odometer,
+//    ETA__c as ETA,
+//    RE_Employee_Code__c as EmplyeeID,
+//    Selected_Distance__c as TotalTowingDistanceKM,
+//    Status,
+//    Tow_Reason__c as ServiceReason,
+//    Trouble_Code__c as ProblemDesc,
+//    Vehicle_Make__c as ServicedVehicleMake,
+//    Vehicle_Model__c as ServicedVehicleModel,
+//    Vehicle_Year__c as ServicedVehicleYear,
+//    VIN_Member_ID__c as MemberID,
+//    XX_Status_Date_Time__c,
+//    RE_Status_Date_Time__c,
+//    DI_Status_Date_Time__c,
+//    OL_Status_Date_Time__c,
+//    Capitalize(Province__c) as Province__c,
+//    Final_Status__c as CallStatusDesc,
+//    if (Final_Status__c = 'Dispatched', Clear_Code__c, Kill_Code__c) as ClearStatusDesc;
+//SQL SELECT CaseNumber,
+//    Clear_Code__c,
+//    Client_Code__c,
+//    Club_Code__c,
+//    CreatedDate,
+//    Current_Odometer__c,
+//    ETA__c,
+//    RE_Employee_Code__c,
+//    Selected_Distance__c,
+//    Status,
+//    Tow_Reason__c,
+//    Trouble_Code__c,
+//    Vehicle_Make__c,
+//    Vehicle_Model__c,
+//    Vehicle_Year__c,
+//    VIN_Member_ID__c,
+//    XX_Status_Date_Time__c,
+//    RE_Status_Date_Time__c,
+//    DI_Status_Date_Time__c,
+//    OL_Status_Date_Time__c,
+//    Province__c,
+//    Final_Status__c,
+//    Kill_Code__c
+//FROM Case 
+//where RE_Status_Date_Time__c >= 2015-08-25T16:30:00.000Z;
+//
+//Directory;
+//left join (SFDispatches) LOAD ClientCode, 
+//     ClientName, 
+//     ClientKey
+//FROM
+//[..\..\..\Data_Raw\SFClientDataMapping.csv]
+//(txt, codepage is 1252, embedded labels, delimiter is ',', msq);
+//
+//
+//Directory;
+//left join (SFDispatches) LOAD Trouble_Code__c as ProblemDesc,  
+//     SFProbCd,
+//     ProblemKey
+//FROM
+//[..\..\..\Data_Raw\SFTcodeMapping.csv]
+//(txt, codepage is 1252, embedded labels, delimiter is ',', msq);
+//
+//
+//Directory;
+//left join LOAD Clear_Code__c as ClearStatusDesc,  
+//     ClearStatusCode
+//FROM
+//[..\..\..\Data_Raw\SFClearCodeMapping.xlsx]
+//(ooxml, embedded labels, table is [CLR codes with Desc]);
+//
+//
+//Directory;
+//left join (SFDispatches) LOAD EmplyeeID, 
+//     AgentKey, 
+//     Site
+//FROM
+//[..\..\..\Data_Raw\SFAgentMapping.xlsx]
+//(ooxml, embedded labels, table is Sheet1);
+//
+//Directory;
+//left join (SFDispatches) LOAD Province__c, 
+//     StateProvince,
+//     Country
+//FROM
+//[..\..\..\Data_Raw\SFProvMapping.xlsx]
+//(ooxml, embedded labels, table is Sheet1);
+//
+//
+//// Retrieving SF data when AMA was not integrated
+//concatenate (SFDispatches) LOAD Province__c, 
+//     EmplyeeID, 
+//     ClearStatusDesc, 
+//     ProblemDesc, 
+//     ClientCode, 
+//     DateReceivedKey, 
+//     CallServiceDate, 
+//     ATA, 
+//     CancelledLagMins, 
+//     CallServiceId, 
+//     Clubkey, 
+//     CreatedDate, 
+//     Odometer, 
+//     ETA, 
+//     TotalTowingDistanceKM, 
+//     Status, 
+//     ServiceReason, 
+//     ServicedVehicleMake, 
+//     ServicedVehicleModel, 
+//     ServicedVehicleYear, 
+//     MemberID, 
+//     XX_Status_Date_Time__c, 
+//     DI_Status_Date_Time__c, 
+//     OL_Status_Date_Time__c, 
+//     CallStatusDesc, 
+//     ClientName, 
+//     ClientKey, 
+//     SFProbCd, 
+//     ProblemKey, 
+//     ClearStatusCode, 
+//     AgentKey, 
+//     Site, 
+//     StateProvince, 
+//     Country
+//FROM
+//[..\QVDs\SFDatanoAMABCAA.qvd]
+//(qvd);
+//
+//// Retrieving SF data when BCAA was not integrated
+//concatenate (SFDispatches) LOAD Province__c, 
+//     EmplyeeID, 
+//     ClearStatusDesc, 
+//     ProblemDesc, 
+//     ClientCode, 
+//     DateReceivedKey, 
+//     CallServiceDate, 
+//     ATA, 
+//     CancelledLagMins, 
+//     CallServiceId, 
+//     Clubkey, 
+//     CreatedDate, 
+//     Odometer, 
+//     ETA, 
+//     TotalTowingDistanceKM, 
+//     Status, 
+//     ServiceReason, 
+//     ServicedVehicleMake, 
+//     ServicedVehicleModel, 
+//     ServicedVehicleYear, 
+//     MemberID, 
+//     XX_Status_Date_Time__c, 
+//     DI_Status_Date_Time__c, 
+//     OL_Status_Date_Time__c, 
+//     CallStatusDesc, 
+//     ClientName, 
+//     ClientKey, 
+//     SFProbCd, 
+//     ProblemKey, 
+//     ClearStatusCode, 
+//     AgentKey, 
+//     Site, 
+//     StateProvince, 
+//     Country
+//FROM
+//[..\QVDs\SFDatanoBCAA.qvd]
+//(qvd);
+
+SFDispatchesFinal:
+concatenate (Call_Fact) LOAD DateReceivedKey &'_'& ClientKey as FactCallKey,
+     month(date#(DateReceivedKey,'YYYYMMDD')) as Fmonth,
+	 Year(date#(DateReceivedKey,'YYYYMMDD')) as Fyear,
+	 ATA-ETA as ATADiff,
+	 Province__c, 
+     EmplyeeID, 
+     ClearStatusDesc, 
+     ProblemDesc, 
+     ClientCode, 
+     DateReceivedKey, 
+     CallServiceDate, 
+     ATA, 
+     CancelledLagMins, 
+     CallServiceId, 
+     Clubkey, 
+     CreatedDate, 
+     Odometer, 
+     ETA, 
+     TotalTowingDistanceKM, 
+     Status, 
+     ServiceReason, 
+     ServicedVehicleMake, 
+     ServicedVehicleModel, 
+     ServicedVehicleYear, 
+     MemberID, 
+     RE_Status_Date_Time__c, 
+     XX_Status_Date_Time__c, 
+     DI_Status_Date_Time__c, 
+     OL_Status_Date_Time__c, 
+     CallStatusDesc, 
+     ClientName, 
+     ClientKey, 
+     SFProbCd, 
+     ProblemKey, 
+     ClearStatusCode, 
+     AgentKey, 
+     Site, 
+     StateProvince, 
+     Country
+FROM
+[..\QVDs\SFCases.qvd]
+(qvd);
+
+store Call_Fact into '..\QVDs\Call_Fact2.qvd';
+///$tab End
+Let vReloadEnd = now(1); //put this at the end of the script
+Let vReloadInterval = '$(vReloadEnd)' - '$(vReloadStart)';

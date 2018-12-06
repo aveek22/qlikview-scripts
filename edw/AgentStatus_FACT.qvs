@@ -1,0 +1,158 @@
+﻿///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;-$#,##0.00';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='YYYY-MM-DD';
+SET TimestampFormat='YYYY-MM-DD h:mm:ss[.fff] TT';
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+
+Let vReloadStart=now(1); //put this at the beginning of the script
+
+$(Include=..\..\..\scripts\edwconnection.txt);
+
+///$tab Mapping
+AgentInfo:
+LOAD AgentFirstName&' '&AgentLastName as Agent,
+	*;
+LOAD AgentKey,
+    EmplyeeID,
+    AgentFirstName,
+    AgentLastName;
+SQL SELECT AgentKey,
+    EmplyeeID,
+    AgentFirstName,
+	AgentLastName
+FROM "EDW_ClubAuto".dbo.DimAgent;
+
+
+AgentStatus:
+LOAD AgentStatusKey,
+	StatusGroup,
+	GeneralStatus,
+	DetailedStatus,
+	Status;
+SQL SELECT AgentStatusKey,
+	StatusGroup,
+	GeneralStatus,
+	DetailedStatus,
+Status =
+	case
+	when DetailedStatus in ('available','acw') then 'Online'
+	when DetailedStatus like 'on claims%' then 'Claims'
+	when DetailedStatus = 'unavailable - personal time' then 'Personal Time'
+	when DetailedStatus = 'unavailable - technical issu' then 'Tech Issue' 
+	when DetailedStatus in ('break','lunch') then 'Break/Lunch'
+	when DetailedStatus = 'unavailable - assistant supervisor' then 'Help Desk'
+	when DetailedStatus like '%training%' then 'Learning and Development' 
+	when DetailedStatus like '%meeting%' then 'Meeting'
+	else
+	case
+	when DetailedStatus like 'on%' then 'Online'
+	else 'Offline'
+	end
+	end
+from "EDW_ClubAuto".dbo.DimAgentStatus;
+///$tab Main 5
+AgentStatus_Fact:
+LOAD Agentkey, 
+	AgentLogInStatuskey,
+    AgentStatusDateKey as AgentDateKey,
+    AgentStatusId,
+    AgentStatusKey,
+    Duration,
+    StatusEndTime,
+    StatusStartTime;
+SQL SELECT Agentkey,
+    AgentLogInStatuskey,
+    AgentStatusDateKey,
+    AgentStatusId,
+    AgentStatusKey,
+    Duration,
+    StatusEndTime,
+    StatusStartTime
+FROM "EDW_ClubAuto".dbo.FactAgentStatus 
+where AgentStatusDateKey >='20140101';
+
+left join(AgentStatus_Fact)
+LOAD Agent,
+	AgentKey as Agentkey,
+    EmplyeeID,
+    AgentFirstName,
+    AgentLastName
+Resident AgentInfo;
+
+drop table AgentInfo;
+
+left join(AgentStatus_Fact)
+LOAD AgentStatusKey,
+	StatusGroup,
+	GeneralStatus,
+	DetailedStatus,
+	Status
+Resident AgentStatus;
+
+drop table AgentStatus;
+
+store AgentStatus_Fact into '..\QVDs\AgentStatus_Fact.qvd';
+///$tab Main 2
+//Telecom_Fact:
+//LOAD WrgpKey,
+//	ClKey,
+//	DateReceivedKey,
+//	TIncomingCalls,
+//	TAnsweredCalls,
+//	TAbandonedCalls,
+//	TAbandonSvcLvl1Calls,
+//	TAbandonSvcLvl2Calls,
+//	TAnsweredSvcLvl1Calls,
+//	TAnsweredSvcLvl2Calls,
+//	THoldTime,
+//	THandleTime,
+//	TACWTime,
+//	TWaitTime,
+//	TAbandonTime,
+//	CallType,
+//	DateReceivedKey &'_'& ClKey as FactCallKey
+//;
+//SQL SELECT IntervalDatekey as DateReceivedKey,
+//    FactWorkgroupInterval.WorkgroupKey as WrgpKey,
+//	DimWorkgroup.ClientKey as ClKey,
+//    sum(IncomingCalls) as TIncomingCalls,
+//    sum(AnsweredCalls) as TAnsweredCalls,
+//    sum(AbondonedCalls) as TAbandonedCalls,
+//    sum(AbandonAcdSvcLvl1)as TAbandonSvcLvl1Calls,
+//    sum(AbandonAcdSvcLvl2) as TAbandonSvcLvl2Calls,
+//    sum(AnsweredAcdSvcLvl1) as TAnsweredSvcLvl1Calls,
+//    sum(AnsweredAcdSvcLvl2) as TAnsweredSvcLvl2Calls,
+//    sum(SecondsOnHold) as THoldTime,
+//    sum(SecondsHandling) as THandleTime,
+//    sum(SecondsAfterCall) as TACWTime,
+//    sum(SecondsInWait) as TWaitTime,
+//    sum(TimeToAbandoned) as TAbandonTime,
+//	CallType =
+//	case
+//		when DimSkillSet.Description like '%Claim%' then 'Claim'
+//		when DimSkillSet.Description like '%Travel%' then 'Travel'
+//		else 'RSA'
+//	end
+//FROM "EDW_ClubAuto".dbo.FactWorkgroupInterval inner join "EDW_ClubAuto".dbo.DimWorkgroup 
+//on FactWorkgroupInterval.WorkgroupKey = DimWorkgroup.WorkgroupKey left outer join "EDW_ClubAuto".dbo.DimSkillSet
+//on DimSkillSet.SkillSetKey = FactWorkgroupInterval.SkillSetKey
+//group by IntervalDateKey,FactWorkgroupInterval.WorkgroupKey,DimWorkgroup.ClientKey,
+//	case
+//		when DimSkillSet.Description like '%Claim%' then 'Claim'
+//		when DimSkillSet.Description like '%Travel%' then 'Travel'
+//		else 'RSA'
+//	end;
+//
+//
+//store Telecom_Fact into '..\QVDs\Telecom_Fact.qvd';
+////drop table Telecom_Fact;
+//
+///$tab End
+Let vReloadEnd = now(1); //put this at the end of the script
+Let vReloadInterval = '$(vReloadEnd)' - '$(vReloadStart)';

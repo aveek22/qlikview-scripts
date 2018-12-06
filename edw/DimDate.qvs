@@ -1,0 +1,39 @@
+﻿///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;($#,##0.00)';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='M/D/YYYY';
+SET TimestampFormat='M/D/YYYY h:mm:ss[.fff] TT';
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+
+Let vReloadStart=now(1); //put this at the beginning of the script
+
+$(Include=..\..\..\scripts\edwconnection.txt);
+///$tab DimDate
+Date:
+LOAD DateKey,
+    FullDateAlternateKey;
+SQL SELECT DateKey,
+    FullDateAlternateKey
+FROM "EDW_ClubAuto".dbo.DimDate
+where FullDateAlternateKey between '2014-10-01' and GETDATE()-1;
+
+
+join (Date) LOAD ClientKey,
+    ClientName;
+SQL SELECT *
+FROM "EDW_ClubAuto".dbo.DimClient;
+
+MergedDate:
+Load DateKey &'_'&ClientKey as FactCallKey,
+FullDateAlternateKey,
+ClientName
+resident Date;
+
+drop table Date;
+
+store MergedDate into '..\QVDs\DimDate.qvd';

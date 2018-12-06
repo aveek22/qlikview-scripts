@@ -1,0 +1,395 @@
+﻿///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;-$#,##0.00';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='YYYY-MM-DD';
+SET TimestampFormat='YYYY-MM-DD h:mm:ss[.fff] TT';
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+
+Let vReloadStart=now(1); //put this at the beginning of the script
+
+$(Include=..\..\..\scripts\edwconnection.txt);
+
+///$tab Mapping
+///$tab Main 5
+Telecom_Fact:
+LOAD WrgpKey,
+ClKey,
+SkillSetKey,
+ServiceProvider,
+FullDate,
+AgentDateKey,
+Client,
+TIncomingCalls,
+TAnsweredCalls,
+TAbandonedCalls,
+TAbandonSvcLvl1Calls,
+TAbandonSvcLvl2Calls,
+TAnsweredSvcLvl1Calls,
+TAnsweredSvcLvl2Calls,
+TAnsweredSvcLvlCalls,
+TAbandonSvcLvlCalls,
+THoldTime,
+THandleTime,
+TACWTime,
+TWaitTime,
+TAbandonTime,
+CallType,
+month(date#(IntervalDatekey,'YYYYMMDD')) as BMonth,
+Year(date#(IntervalDatekey,'YYYYMMDD')) as BYear,
+IntervalDatekey &'_'& ClKey as FactCallKey
+;
+SQL SELECT IntervalDatekey,
+FactWorkgroupInterval.WorkgroupKey as WrgpKey,
+DimWorkgroup.ClientKey as ClKey,
+FactWorkgroupInterval.SkillSetKey as SkillSetKey,
+DimDate.FullDateAlternateKey as FullDate,
+convert(varchar(10),FullDateAlternateKey,112) as AgentDateKey,
+DimClient.ClientName as Client,
+sum(IncomingCalls) as TIncomingCalls,
+sum(AnsweredCalls) as TAnsweredCalls,
+sum(AbondonedCalls) as TAbandonedCalls,
+sum(AbandonAcdSvcLvl1)as TAbandonSvcLvl1Calls,
+sum(AbandonAcdSvcLvl2) as TAbandonSvcLvl2Calls,
+sum(AnsweredAcdSvcLvl1) as TAnsweredSvcLvl1Calls,
+sum(AnsweredAcdSvcLvl2) as TAnsweredSvcLvl2Calls,
+sum(AnsweredAcdSvcLvl) as TAnsweredSvcLvlCalls,
+sum(AbandonAcdSvcLvl) as TAbandonSvcLvlCalls,
+sum(SecondsOnHold) as THoldTime,
+sum(SecondsHandling) as THandleTime,
+sum(SecondsAfterCall) as TACWTime,
+sum(SecondsInWait) as TWaitTime,
+sum(TimeToAbandoned) as TAbandonTime,
+CallType =
+case
+when DimSkillSet.Description like '%Claim%' then 'Claim'
+when DimSkillSet.Description like '%Travel%' then 'Travel'
+when DimSkillSet.Description like '%Recall%' then 'Recall'
+else 'RSA'
+end,
+ServiceProvider = 
+case
+when DimWorkgroup.ServiceProvider = 'LiveX' then 'LiveX'
+else 'CARS'
+end
+FROM "EDW_ClubAuto".dbo.FactWorkgroupInterval inner join "EDW_ClubAuto".dbo.DimWorkgroup 
+on FactWorkgroupInterval.WorkgroupKey = DimWorkgroup.WorkgroupKey inner join "EDW_ClubAuto".dbo.DimDate
+on DimDate.DateKey = FactWorkgroupInterval.IntervalDatekey left outer join "EDW_ClubAuto".dbo.DimSkillSet
+on DimSkillSet.SkillSetKey = FactWorkgroupInterval.SkillSetKey inner join "EDW_ClubAuto".dbo.DimClient
+on DimClient.ClientKey = DimWorkgroup.ClientKey
+where IntervalDateKey >= '20130101' and DimClient.ClientKey not in ('41','42','43','44','46','47','67','68','69')
+group by IntervalDateKey,DimWorkgroup.ClientKey,FactWorkgroupInterval.SkillSetKey,FactWorkgroupInterval.WorkgroupKey,DimWorkgroup.ServiceProvider,DimDate.FullDateAlternateKey,DimClient.ClientName,
+convert(varchar(10),FullDateAlternateKey,112),
+case
+when DimSkillSet.Description like '%Claim%' then 'Claim'
+when DimSkillSet.Description like '%Travel%' then 'Travel'
+when DimSkillSet.Description like '%Recall%' then 'Recall'
+else 'RSA'
+end,
+case
+when DimWorkgroup.ServiceProvider = 'LiveX' then 'LiveX'
+else 'CARS'
+end;
+
+/* JLR */
+LOAD WrgpKey,
+ClKey,
+SkillSetKey,
+ServiceProvider,
+FullDate,
+AgentDateKey,
+Client,
+TIncomingCalls,
+TAnsweredCalls,
+TAbandonedCalls,
+TAbandonSvcLvl1Calls,
+TAbandonSvcLvl2Calls,
+TAnsweredSvcLvl1Calls,
+TAnsweredSvcLvl2Calls,
+TAnsweredSvcLvlCalls,
+TAbandonSvcLvlCalls,
+THoldTime,
+THandleTime,
+TACWTime,
+TWaitTime,
+TAbandonTime,
+CallType,
+month(date#(IntervalDatekey,'YYYYMMDD')) as BMonth,
+Year(date#(IntervalDatekey,'YYYYMMDD')) as BYear,
+IntervalDatekey &'_'& ClKey as FactCallKey
+;
+SQL SELECT IntervalDatekey,
+FactWorkgroupInterval.WorkgroupKey as WrgpKey,
+DimWorkgroup.ClientKey as ClKey,
+FactWorkgroupInterval.SkillSetKey as SkillSetKey,
+DimDate.FullDateAlternateKey as FullDate,
+convert(varchar(10),FullDateAlternateKey,112) as AgentDateKey,
+DimClient.ClientName as Client,
+sum(IncomingCalls) as TIncomingCalls,
+sum(AnsweredCalls) as TAnsweredCalls,
+sum(AbondonedCalls) as TAbandonedCalls,
+sum(AbandonAcdSvcLvl1)as TAbandonSvcLvl1Calls,
+sum(AbandonAcdSvcLvl2) as TAbandonSvcLvl2Calls,
+sum(AnsweredAcdSvcLvl1) as TAnsweredSvcLvl1Calls,
+sum(AnsweredAcdSvcLvl2) as TAnsweredSvcLvl2Calls,
+sum(AnsweredAcdSvcLvl) as TAnsweredSvcLvlCalls,
+sum(AbandonAcdSvcLvl) as TAbandonSvcLvlCalls,
+sum(SecondsOnHold) as THoldTime,
+sum(SecondsHandling) as THandleTime,
+sum(SecondsAfterCall) as TACWTime,
+sum(SecondsInWait) as TWaitTime,
+sum(TimeToAbandoned) as TAbandonTime,
+CallType =
+case
+when DimSkillSet.Description like '%Claim%' then 'Claim'
+when DimSkillSet.Description like '%Travel%' then 'Travel'
+when DimSkillSet.Description like '%Recall%' then 'Recall'
+else 'RSA'
+end,
+ServiceProvider = 
+case
+when DimWorkgroup.ServiceProvider = 'LiveX' then 'LiveX'
+else 'CARS'
+end
+FROM "EDW_ClubAuto".dbo.FactWorkgroupInterval inner join "EDW_ClubAuto".dbo.DimWorkgroup 
+on FactWorkgroupInterval.WorkgroupKey = DimWorkgroup.WorkgroupKey inner join "EDW_ClubAuto".dbo.DimDate
+on DimDate.DateKey = FactWorkgroupInterval.IntervalDatekey left outer join "EDW_ClubAuto".dbo.DimSkillSet
+on DimSkillSet.SkillSetKey = FactWorkgroupInterval.SkillSetKey inner join "EDW_ClubAuto".dbo.DimClient
+on DimClient.ClientKey = DimWorkgroup.ClientKey
+where IntervalDateKey >= '20170314' and DimClient.ClientKey in ('41','42','43','44')
+group by IntervalDateKey,DimWorkgroup.ClientKey,FactWorkgroupInterval.SkillSetKey,FactWorkgroupInterval.WorkgroupKey,DimWorkgroup.ServiceProvider,DimDate.FullDateAlternateKey,DimClient.ClientName,
+convert(varchar(10),FullDateAlternateKey,112),
+case
+when DimSkillSet.Description like '%Claim%' then 'Claim'
+when DimSkillSet.Description like '%Travel%' then 'Travel'
+when DimSkillSet.Description like '%Recall%' then 'Recall'
+else 'RSA'
+end,
+case
+when DimWorkgroup.ServiceProvider = 'LiveX' then 'LiveX'
+else 'CARS'
+end;
+
+/* Foss/Lease Plan */
+LOAD WrgpKey,
+ClKey,
+SkillSetKey,
+ServiceProvider,
+FullDate,
+AgentDateKey,
+Client,
+TIncomingCalls,
+TAnsweredCalls,
+TAbandonedCalls,
+TAbandonSvcLvl1Calls,
+TAbandonSvcLvl2Calls,
+TAnsweredSvcLvl1Calls,
+TAnsweredSvcLvl2Calls,
+TAnsweredSvcLvlCalls,
+TAbandonSvcLvlCalls,
+THoldTime,
+THandleTime,
+TACWTime,
+TWaitTime,
+TAbandonTime,
+CallType,
+month(date#(IntervalDatekey,'YYYYMMDD')) as BMonth,
+Year(date#(IntervalDatekey,'YYYYMMDD')) as BYear,
+IntervalDatekey &'_'& ClKey as FactCallKey
+;
+SQL SELECT IntervalDatekey,
+FactWorkgroupInterval.WorkgroupKey as WrgpKey,
+DimWorkgroup.ClientKey as ClKey,
+FactWorkgroupInterval.SkillSetKey as SkillSetKey,
+DimDate.FullDateAlternateKey as FullDate,
+convert(varchar(10),FullDateAlternateKey,112) as AgentDateKey,
+DimClient.ClientName as Client,
+sum(IncomingCalls) as TIncomingCalls,
+sum(AnsweredCalls) as TAnsweredCalls,
+sum(AbondonedCalls) as TAbandonedCalls,
+sum(AbandonAcdSvcLvl1)as TAbandonSvcLvl1Calls,
+sum(AbandonAcdSvcLvl2) as TAbandonSvcLvl2Calls,
+sum(AnsweredAcdSvcLvl1) as TAnsweredSvcLvl1Calls,
+sum(AnsweredAcdSvcLvl2) as TAnsweredSvcLvl2Calls,
+sum(AnsweredAcdSvcLvl) as TAnsweredSvcLvlCalls,
+sum(AbandonAcdSvcLvl) as TAbandonSvcLvlCalls,
+sum(SecondsOnHold) as THoldTime,
+sum(SecondsHandling) as THandleTime,
+sum(SecondsAfterCall) as TACWTime,
+sum(SecondsInWait) as TWaitTime,
+sum(TimeToAbandoned) as TAbandonTime,
+CallType =
+case
+when DimSkillSet.Description like '%Claim%' then 'Claim'
+when DimSkillSet.Description like '%Travel%' then 'Travel'
+when DimSkillSet.Description like '%Recall%' then 'Recall'
+else 'RSA'
+end,
+ServiceProvider = 
+case
+when DimWorkgroup.ServiceProvider = 'LiveX' then 'LiveX'
+else 'CARS'
+end
+FROM "EDW_ClubAuto".dbo.FactWorkgroupInterval inner join "EDW_ClubAuto".dbo.DimWorkgroup 
+on FactWorkgroupInterval.WorkgroupKey = DimWorkgroup.WorkgroupKey inner join "EDW_ClubAuto".dbo.DimDate
+on DimDate.DateKey = FactWorkgroupInterval.IntervalDatekey left outer join "EDW_ClubAuto".dbo.DimSkillSet
+on DimSkillSet.SkillSetKey = FactWorkgroupInterval.SkillSetKey inner join "EDW_ClubAuto".dbo.DimClient
+on DimClient.ClientKey = DimWorkgroup.ClientKey
+where IntervalDateKey >= '20170529' and DimClient.ClientKey in ('46','47')
+group by IntervalDateKey,DimWorkgroup.ClientKey,FactWorkgroupInterval.SkillSetKey,FactWorkgroupInterval.WorkgroupKey,DimWorkgroup.ServiceProvider,DimDate.FullDateAlternateKey,DimClient.ClientName,
+convert(varchar(10),FullDateAlternateKey,112),
+case
+when DimSkillSet.Description like '%Claim%' then 'Claim'
+when DimSkillSet.Description like '%Travel%' then 'Travel'
+when DimSkillSet.Description like '%Recall%' then 'Recall'
+else 'RSA'
+end,
+case
+when DimWorkgroup.ServiceProvider = 'LiveX' then 'LiveX'
+else 'CARS'
+end;
+
+
+/* LGM - Audi, Mitsubishi, VW */
+LOAD WrgpKey,
+ClKey,
+SkillSetKey,
+ServiceProvider,
+FullDate,
+AgentDateKey,
+Client,
+TIncomingCalls,
+TAnsweredCalls,
+TAbandonedCalls,
+TAbandonSvcLvl1Calls,
+TAbandonSvcLvl2Calls,
+TAnsweredSvcLvl1Calls,
+TAnsweredSvcLvl2Calls,
+TAnsweredSvcLvlCalls,
+TAbandonSvcLvlCalls,
+THoldTime,
+THandleTime,
+TACWTime,
+TWaitTime,
+TAbandonTime,
+CallType,
+month(date#(IntervalDatekey,'YYYYMMDD')) as BMonth,
+Year(date#(IntervalDatekey,'YYYYMMDD')) as BYear,
+IntervalDatekey &'_'& ClKey as FactCallKey
+;
+SQL SELECT IntervalDatekey,
+FactWorkgroupInterval.WorkgroupKey as WrgpKey,
+DimWorkgroup.ClientKey as ClKey,
+FactWorkgroupInterval.SkillSetKey as SkillSetKey,
+DimDate.FullDateAlternateKey as FullDate,
+convert(varchar(10),FullDateAlternateKey,112) as AgentDateKey,
+DimClient.ClientName as Client,
+sum(IncomingCalls) as TIncomingCalls,
+sum(AnsweredCalls) as TAnsweredCalls,
+sum(AbondonedCalls) as TAbandonedCalls,
+sum(AbandonAcdSvcLvl1)as TAbandonSvcLvl1Calls,
+sum(AbandonAcdSvcLvl2) as TAbandonSvcLvl2Calls,
+sum(AnsweredAcdSvcLvl1) as TAnsweredSvcLvl1Calls,
+sum(AnsweredAcdSvcLvl2) as TAnsweredSvcLvl2Calls,
+sum(AnsweredAcdSvcLvl) as TAnsweredSvcLvlCalls,
+sum(AbandonAcdSvcLvl) as TAbandonSvcLvlCalls,
+sum(SecondsOnHold) as THoldTime,
+sum(SecondsHandling) as THandleTime,
+sum(SecondsAfterCall) as TACWTime,
+sum(SecondsInWait) as TWaitTime,
+sum(TimeToAbandoned) as TAbandonTime,
+CallType =
+case
+when DimSkillSet.Description like '%Claim%' then 'Claim'
+when DimSkillSet.Description like '%Travel%' then 'Travel'
+when DimSkillSet.Description like '%Recall%' then 'Recall'
+else 'RSA'
+end,
+ServiceProvider = 
+case
+when DimWorkgroup.ServiceProvider = 'LiveX' then 'LiveX'
+else 'CARS'
+end
+FROM "EDW_ClubAuto".dbo.FactWorkgroupInterval inner join "EDW_ClubAuto".dbo.DimWorkgroup 
+on FactWorkgroupInterval.WorkgroupKey = DimWorkgroup.WorkgroupKey inner join "EDW_ClubAuto".dbo.DimDate
+on DimDate.DateKey = FactWorkgroupInterval.IntervalDatekey left outer join "EDW_ClubAuto".dbo.DimSkillSet
+on DimSkillSet.SkillSetKey = FactWorkgroupInterval.SkillSetKey inner join "EDW_ClubAuto".dbo.DimClient
+on DimClient.ClientKey = DimWorkgroup.ClientKey
+where IntervalDateKey >= '20181001' and DimClient.ClientKey in ('67','68','69')
+group by IntervalDateKey,DimWorkgroup.ClientKey,FactWorkgroupInterval.SkillSetKey,FactWorkgroupInterval.WorkgroupKey,DimWorkgroup.ServiceProvider,DimDate.FullDateAlternateKey,DimClient.ClientName,
+convert(varchar(10),FullDateAlternateKey,112),
+case
+when DimSkillSet.Description like '%Claim%' then 'Claim'
+when DimSkillSet.Description like '%Travel%' then 'Travel'
+when DimSkillSet.Description like '%Recall%' then 'Recall'
+else 'RSA'
+end,
+case
+when DimWorkgroup.ServiceProvider = 'LiveX' then 'LiveX'
+else 'CARS'
+end;
+
+store Telecom_Fact into '..\QVDs\Telecom_Fact3.qvd';
+//drop table Telecom_Fact;
+///$tab Main 2
+//Telecom_Fact:
+//LOAD WrgpKey,
+//	ClKey,
+//	DateReceivedKey,
+//	TIncomingCalls,
+//	TAnsweredCalls,
+//	TAbandonedCalls,
+//	TAbandonSvcLvl1Calls,
+//	TAbandonSvcLvl2Calls,
+//	TAnsweredSvcLvl1Calls,
+//	TAnsweredSvcLvl2Calls,
+//	THoldTime,
+//	THandleTime,
+//	TACWTime,
+//	TWaitTime,
+//	TAbandonTime,
+//	CallType,
+//	DateReceivedKey &'_'& ClKey as FactCallKey
+//;
+//SQL SELECT IntervalDatekey as DateReceivedKey,
+//    FactWorkgroupInterval.WorkgroupKey as WrgpKey,
+//	DimWorkgroup.ClientKey as ClKey,
+//    sum(IncomingCalls) as TIncomingCalls,
+//    sum(AnsweredCalls) as TAnsweredCalls,
+//    sum(AbondonedCalls) as TAbandonedCalls,
+//    sum(AbandonAcdSvcLvl1)as TAbandonSvcLvl1Calls,
+//    sum(AbandonAcdSvcLvl2) as TAbandonSvcLvl2Calls,
+//    sum(AnsweredAcdSvcLvl1) as TAnsweredSvcLvl1Calls,
+//    sum(AnsweredAcdSvcLvl2) as TAnsweredSvcLvl2Calls,
+//    sum(SecondsOnHold) as THoldTime,
+//    sum(SecondsHandling) as THandleTime,
+//    sum(SecondsAfterCall) as TACWTime,
+//    sum(SecondsInWait) as TWaitTime,
+//    sum(TimeToAbandoned) as TAbandonTime,
+//	CallType =
+//	case
+//		when DimSkillSet.Description like '%Claim%' then 'Claim'
+//		when DimSkillSet.Description like '%Travel%' then 'Travel'
+//		else 'RSA'
+//	end
+//FROM "EDW_ClubAuto".dbo.FactWorkgroupInterval inner join "EDW_ClubAuto".dbo.DimWorkgroup 
+//on FactWorkgroupInterval.WorkgroupKey = DimWorkgroup.WorkgroupKey left outer join "EDW_ClubAuto".dbo.DimSkillSet
+//on DimSkillSet.SkillSetKey = FactWorkgroupInterval.SkillSetKey
+//group by IntervalDateKey,FactWorkgroupInterval.WorkgroupKey,DimWorkgroup.ClientKey,
+//	case
+//		when DimSkillSet.Description like '%Claim%' then 'Claim'
+//		when DimSkillSet.Description like '%Travel%' then 'Travel'
+//		else 'RSA'
+//	end;
+//
+//
+//store Telecom_Fact into '..\QVDs\Telecom_Fact.qvd';
+////drop table Telecom_Fact;
+//
+///$tab End
+Let vReloadEnd = now(1); //put this at the end of the script
+Let vReloadInterval = '$(vReloadEnd)' - '$(vReloadStart)';

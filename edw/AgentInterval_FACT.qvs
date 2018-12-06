@@ -1,0 +1,87 @@
+﻿///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;-$#,##0.00';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='YYYY-MM-DD';
+SET TimestampFormat='YYYY-MM-DD h:mm:ss[.fff] TT';
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+
+Let vReloadStart=now(1); //put this at the beginning of the script
+
+$(Include=..\..\..\scripts\edwconnection.txt);
+
+///$tab Mapping
+//SuperintendantM:
+//Mapping LOAD SUPERINTENDANT_CODE as SUPERINTENDANT, 
+//     SUPERINTENDANT_DESC
+//FROM
+//[..\QVDs\SuperIntendant_Codes.qvd]
+//(qvd);
+//
+//FamilyCodesM:
+//Mapping LOAD FAMILY_CODE as FAMILY, 
+//     FAMILY_DESC
+//FROM
+//[..\QVDs\Family_Codes.qvd]
+//(qvd);
+//
+//SchoolSubTypeM:
+//Mapping 
+//LOAD SCHOOL_SUB_TYPE_CODE as SCHOOL_SUB_TYPE, 
+//     SCHOOL_SUB_TYPE_DESC
+//FROM
+//[..\QVDs\School_Sub_Type_Codes.qvd]
+//(qvd);
+//
+//MunicipalityM:
+//Mapping LOAD MUNICIPALITY, 
+//     MUNICIPALITY_DESC
+//FROM
+//[..\QVDs\Municipalities.qvd]
+//(qvd);
+//
+///$tab Main 2
+AgentInterval_Fact:
+LOAD IntervalDatekey as DateKey, 
+AgentKey, 
+WorkgroupKey,
+FullDateAlternateKey as IntervalDate,
+TAnsweredAcdCalls,
+TIncomingCalls,
+TSecsAvailable,
+TSecsUnavail,
+TSecsLoggedIn,
+TSecsProd,
+TSecsTalk,
+TSecsACW,
+TSecsHold,
+TSecsHand,
+TSecsAban,
+TSecsWait;
+SQL select IntervalDatekey, AgentKey, WorkgroupKey,DimDate.FullDateAlternateKey,
+sum(AnsweredAcdCalls) as TAnsweredAcdCalls,
+sum(IncomingCalls) as TIncomingCalls,
+sum(SecondsAvailable) as TSecsAvailable,
+sum(SecondsUnavailable) as TSecsUnavail,
+sum(SecondsLoggedIn) as TSecsLoggedIn,
+sum(SecondsProductive) as TSecsProd,
+sum(SecondsInTalk) as TSecsTalk,
+sum(SecondsAfterCall) as TSecsACW,
+sum(SecondsInHold) as TSecsHold,
+sum(SecondsHandling) as TSecsHand,
+sum(SecondsToAbondon) as TSecsAban,
+sum(SecondsInWait) as TSecsWait
+from "EDW_ClubAuto".dbo.FactAgentInterval
+inner join "EDW_ClubAuto".dbo.DimDate on FactAgentInterval.IntervalDatekey = DimDate.DateKey
+group by IntervalDateKey, AgentKey, WorkgroupKey,DimDate.FullDateAlternateKey;
+
+
+store AgentInterval_Fact into '..\QVDs\AgentInterval_Fact.qvd';
+//drop table AgentInterval_Fact;
+///$tab End
+Let vReloadEnd = now(1); //put this at the end of the script
+Let vReloadInterval = '$(vReloadEnd)' - '$(vReloadStart)';
